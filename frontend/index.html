@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BFHL — Tree Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #7fffb2;
+      --accent2: #ff6b6b;
+      --accent3: #6baaff;
+      --text: #e8e8f0;
+      --muted: #5a5a7a;
+      --card: #13131e;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Syne', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(127,255,178,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(127,255,178,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      margin-bottom: 3rem;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .header-tag {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+
+    h1 span { color: var(--accent); }
+
+    .subtitle {
+      margin-top: 0.75rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    /* Input panel */
+    .input-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s 0.15s ease both;
+    }
+
+    .panel-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      padding: 1rem;
+      resize: vertical;
+      min-height: 120px;
+      outline: none;
+      transition: border-color 0.2s;
+      line-height: 1.6;
+    }
+
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted); }
+
+    .input-hint {
+      margin-top: 0.5rem;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* API URL input */
+    .api-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      align-items: center;
+    }
+
+    .api-label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      padding: 0.5rem 0.75rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus { border-color: var(--accent3); }
+
+    /* Presets */
+    .preset-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .preset-btn {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      padding: 0.3rem 0.7rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Submit button */
+    .btn-submit {
+      margin-top: 1.25rem;
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--sans);
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(127,255,178,0.25);
+    }
+
+    .btn-submit:active { transform: translateY(0); }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(0,0,0,0.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+
+    /* Error */
+    .error-box {
+      background: rgba(255,107,107,0.08);
+      border: 1px solid rgba(255,107,107,0.3);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      color: var(--accent2);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    /* Results */
+    .results-section {
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .results-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .badge-ok { background: rgba(127,255,178,0.12); color: var(--accent); border: 1px solid rgba(127,255,178,0.3); }
+    .badge-err { background: rgba(255,107,107,0.12); color: var(--accent2); border: 1px solid rgba(255,107,107,0.3); }
+
+    /* Identity card */
+    .identity-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .identity-item label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.2rem;
+    }
+
+    .identity-item span {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--accent3);
+    }
+
+    /* Summary strip */
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .summary-card .val {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+
+    .summary-card .lbl {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* Section headers */
+    .section-head {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin: 1.25rem 0 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .section-head::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Hierarchy cards */
+    .hierarchy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .hierarchy-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      transition: border-color 0.2s;
+    }
+
+    .hierarchy-card:hover { border-color: var(--accent); }
+
+    .hierarchy-card.cycle-card { border-color: rgba(255,107,107,0.3); }
+
+    .hcard-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .root-badge {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--accent);
+      font-family: var(--mono);
+    }
+
+    .cycle-badge {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--accent2);
+      border: 1px solid rgba(255,107,107,0.4);
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+    }
+
+    .depth-badge {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--accent3);
+      border: 1px solid rgba(107,170,255,0.4);
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+    }
+
+    /* Tree renderer */
+    .tree-view {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      line-height: 1.8;
+      color: var(--text);
+    }
+
+    .tree-node { display: block; }
+    .tree-node-name { color: var(--text); }
+    .tree-children { padding-left: 1.1rem; border-left: 1px dashed var(--border); margin-left: 0.3rem; }
+
+    /* Tags row */
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .tag {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .tag.invalid { color: var(--accent2); border-color: rgba(255,107,107,0.3); }
+    .tag.dupe { color: #ffc06b; border-color: rgba(255,192,107,0.3); }
+
+    /* Raw JSON toggle */
+    .raw-toggle {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      margin-top: 1.25rem;
+      transition: all 0.15s;
+    }
+
+    .raw-toggle:hover { color: var(--text); border-color: var(--muted); }
+
+    .raw-json {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      line-height: 1.7;
+      color: var(--text);
+      overflow-x: auto;
+      margin-top: 0.5rem;
+      white-space: pre;
+    }
+
+    /* Animations */
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeUp   { from { opacity:0; transform:translateY(16px);  } to { opacity:1; transform:translateY(0); } }
+    @keyframes spin     { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 600px) {
+      .summary-strip { grid-template-columns: repeat(3, 1fr); }
+      .hierarchy-grid { grid-template-columns: 1fr; }
+      .api-row { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-tag">// SRM Full Stack Challenge</div>
+      <h1>BFHL <span>Tree</span> Analyzer</h1>
+      <p class="subtitle">POST /bfhl &nbsp;·&nbsp; hierarchy detection &nbsp;·&nbsp; cycle analysis</p>
+    </header>
+
+    <div class="input-panel">
+      <div class="panel-label">// Input Data</div>
+
+      <div class="api-row" style="margin-bottom:1rem;">
+        <span class="api-label">API URL:</span>
+        <input type="text" id="apiUrl" value="http://localhost:3001/bfhl" placeholder="https://your-backend.onrender.com/bfhl" />
+      </div>
+
+      <textarea id="inputData" placeholder='["A->B", "A->C", "B->D", "C->E"]'></textarea>
+      <div class="input-hint">Enter a JSON array of node strings, one edge per entry.</div>
+
+      <div class="preset-row">
+        <span class="api-label" style="font-size:0.65rem;">Quick load:</span>
+        <button class="preset-btn" onclick="loadPreset('basic')">Basic Tree</button>
+        <button class="preset-btn" onclick="loadPreset('cycle')">With Cycle</button>
+        <button class="preset-btn" onclick="loadPreset('full')">Full Example</button>
+        <button class="preset-btn" onclick="loadPreset('diamond')">Diamond</button>
+        <button class="preset-btn" onclick="loadPreset('invalid')">Invalid Mix</button>
+      </div>
+
+      <button class="btn-submit" id="submitBtn" onclick="analyze()">
+        Analyze Hierarchy
+      </button>
+    </div>
+
+    <div id="errorBox" class="error-box hidden"></div>
+    <div id="resultsSection" class="results-section hidden"></div>
+  </div>
+
+  <script>
+    const PRESETS = {
+      basic: '["A->B", "A->C", "B->D"]',
+      cycle: '["X->Y", "Y->Z", "Z->X"]',
+      full: '["A->B", "A->C", "B->D", "C->E", "E->F", "X->Y", "Y->Z", "Z->X", "P->Q", "Q->R", "G->H", "G->H", "G->I", "hello", "1->2", "A->"]',
+      diamond: '["A->B", "A->C", "B->D", "C->D", "D->E"]',
+      invalid: '["hello", "1->2", "AB->C", "A-B", "A->", "A->A", "", " A->B "]',
+    };
+
+    function loadPreset(name) {
+      document.getElementById('inputData').value = PRESETS[name];
+    }
+
+    function buildTreeHTML(node, children) {
+      let html = `<span class="tree-node"><span class="tree-node-name">${node}</span>`;
+      const keys = Object.keys(children);
+      if (keys.length) {
+        html += `<span class="tree-children">`;
+        for (const k of keys) {
+          html += buildTreeHTML(k, children[k]);
+        }
+        html += `</span>`;
+      }
+      html += `</span>`;
+      return html;
+    }
+
+    function renderHierarchies(hierarchies) {
+      return hierarchies.map(h => {
+        const isCycle = h.has_cycle === true;
+        let treeHTML = isCycle
+          ? `<span style="color:var(--accent2);font-family:var(--mono);font-size:0.75rem;">⟲ cyclic group — no tree</span>`
+          : buildTreeHTML(h.root, (h.tree[h.root] || {}));
+
+        return `
+          <div class="hierarchy-card ${isCycle ? 'cycle-card' : ''}">
+            <div class="hcard-header">
+              <span class="root-badge">${h.root}</span>
+              ${isCycle ? '<span class="cycle-badge">CYCLE</span>' : ''}
+              ${!isCycle && h.depth ? `<span class="depth-badge">depth ${h.depth}</span>` : ''}
+            </div>
+            <div class="tree-view">${treeHTML}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderResults(data) {
+      const { user_id, email_id, college_roll_number, hierarchies, invalid_entries, duplicate_edges, summary } = data;
+
+      const invalidHTML = invalid_entries.length
+        ? invalid_entries.map(e => `<span class="tag invalid">${e || '""'}</span>`).join('')
+        : `<span style="color:var(--muted);font-family:var(--mono);font-size:0.8rem;">none</span>`;
+
+      const dupeHTML = duplicate_edges.length
+        ? duplicate_edges.map(e => `<span class="tag dupe">${e}</span>`).join('')
+        : `<span style="color:var(--muted);font-family:var(--mono);font-size:0.8rem;">none</span>`;
+
+      return `
+        <div class="results-header">
+          <span class="results-title">Analysis Complete</span>
+          <span class="badge badge-ok">200 OK</span>
+        </div>
+
+        <div class="identity-card">
+          <div class="identity-item"><label>user_id</label><span>${user_id}</span></div>
+          <div class="identity-item"><label>email</label><span>${email_id}</span></div>
+          <div class="identity-item"><label>roll</label><span>${college_roll_number}</span></div>
+        </div>
+
+        <div class="summary-strip">
+          <div class="summary-card"><div class="val">${summary.total_trees}</div><div class="lbl">trees</div></div>
+          <div class="summary-card"><div class="val" style="color:var(--accent2)">${summary.total_cycles}</div><div class="lbl">cycles</div></div>
+          <div class="summary-card"><div class="val" style="color:var(--accent3)">${summary.largest_tree_root ?? '—'}</div><div class="lbl">largest root</div></div>
+        </div>
+
+        <div class="section-head">hierarchies (${hierarchies.length})</div>
+        <div class="hierarchy-grid">${renderHierarchies(hierarchies)}</div>
+
+        <div class="section-head">invalid entries</div>
+        <div class="tag-list">${invalidHTML}</div>
+
+        <div class="section-head">duplicate edges</div>
+        <div class="tag-list">${dupeHTML}</div>
+
+        <button class="raw-toggle" onclick="toggleRaw(this)">Show raw JSON</button>
+        <pre id="rawJson" class="raw-json hidden">${JSON.stringify(data, null, 2)}</pre>
+      `;
+    }
+
+    function toggleRaw(btn) {
+      const pre = document.getElementById('rawJson');
+      pre.classList.toggle('hidden');
+      btn.textContent = pre.classList.contains('hidden') ? 'Show raw JSON' : 'Hide raw JSON';
+    }
+
+    async function analyze() {
+      const btn = document.getElementById('submitBtn');
+      const errorBox = document.getElementById('errorBox');
+      const resultsSection = document.getElementById('resultsSection');
+
+      errorBox.classList.add('hidden');
+      resultsSection.classList.add('hidden');
+
+      // Parse input
+      let parsed;
+      const raw = document.getElementById('inputData').value.trim();
+      try {
+        parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('Input must be a JSON array');
+      } catch (e) {
+        errorBox.textContent = `⚠ Invalid JSON: ${e.message}`;
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      const apiUrl = document.getElementById('apiUrl').value.trim();
+      if (!apiUrl) {
+        errorBox.textContent = '⚠ Please enter the API URL.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Analyzing...';
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: parsed }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        const data = await res.json();
+
+        resultsSection.innerHTML = renderResults(data);
+        resultsSection.classList.remove('hidden');
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        errorBox.innerHTML = `⚠ API call failed: ${err.message}<br><small>Make sure CORS is enabled and the API URL is correct.</small>`;
+        errorBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Analyze Hierarchy';
+      }
+    }
+
+    // Allow Ctrl+Enter to submit
+    document.getElementById('inputData').addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'Enter') analyze();
+    });
+  </script>
+</body>
+</html>
